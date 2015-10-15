@@ -80,5 +80,11 @@ describe RequestInterceptor do
       response = http.request(delete_request)
       expect(response).to be_kind_of(Net::HTTPAccepted)
     end
+
+    it 'runs non-intercepted requests like normal' do
+      request = Net::HTTP::Get.new( URI.parse("http://stackoverflow.com/") )
+      response = http.request(request)
+      expect(response.body).to match /Stack Overflow/im
+    end
   end
 end

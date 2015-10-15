@@ -28,23 +28,26 @@ class RequestInterceptor::Runner
     # keep the same behaviour as Net::HTTP
     request.set_body_internal(body)
 
-    mock_request = mock_request_for_application(request)
-    mock_response = dispatch_mock_request(request, mock_request)
+    if mock_request = mock_request_for_application(request)
+      mock_response = dispatch_mock_request(request, mock_request)
 
-    # create response
-    status = RequestInterceptor::Status.from_code(mock_response.status)
-    response = status.response_class.new("1.1", status.value, status.description)
+      # create response
+      status = RequestInterceptor::Status.from_code(mock_response.status)
+      response = status.response_class.new("1.1", status.value, status.description)
 
-    # copy header to response
-    mock_response.original_headers.each do |k, v|
-      response.add_field(k, v)
+      # copy header to response
+      mock_response.original_headers.each do |k, v|
+        response.add_field(k, v)
+      end
+
+      # copy body to response
+      response.body = mock_response.body
+
+      block.call(response) if block
+      response
+    else
+      real_request(request)
     end
-
-    # copy body to response
-    response.body = mock_response.body
-
-    block.call(response) if block
-    response
   end
 
   private
@@ -84,7 +87,7 @@ class RequestInterceptor::Runner
 
   def mock_request_for_application(request)
     application = applications.find { |app| app.hostname_pattern === request["Host"] }
-    Rack::MockRequest.new(application)
+    Rack::MockRequest.new(application) if application
   end
 
   def dispatch_mock_request(request, mock_request)
@@ -100,5 +103,13 @@ class RequestInterceptor::Runner
     else
       raise NotImplementedError, "Simulating #{request.method} is not supported"
     end
+  end
+
+  def real_request(request)
+    restore_nethttp_methods
+
+    uri = request.uri
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.request(request)
   end
 end
