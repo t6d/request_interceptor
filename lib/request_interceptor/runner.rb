@@ -1,7 +1,7 @@
 require "delegate"
 require "net/http"
 
-require "rack"
+require "rack/mock"
 
 class RequestInterceptor::Runner
   class SocketSimulator < SimpleDelegator
