@@ -91,15 +91,17 @@ class RequestInterceptor::Runner
   end
 
   def dispatch_mock_request(request, mock_request)
+    rack_env = request.to_hash
+
     case request.method
     when GET
-      mock_request.get(request.path)
+      mock_request.get(request.path, rack_env)
     when POST
-      mock_request.post(request.path, input: request.body)
+      mock_request.post(request.path, rack_env.merge(input: request.body))
     when PUT
-      mock_request.put(request.path, input: request.body)
+      mock_request.put(request.path, rack_env.merge(input: request.body))
     when DELETE
-      mock_request.delete(request.path)
+      mock_request.delete(request.path, rack_env)
     else
       raise NotImplementedError, "Simulating #{request.method} is not supported"
     end

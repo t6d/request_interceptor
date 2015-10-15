@@ -8,10 +8,25 @@ describe RequestInterceptor do
   let(:example) do
     RequestInterceptor.define(/.*\.example.com/) do
       before { content_type 'text/plain' }
-      get("/") { "example.com" }
-      post("/") { request.body }
-      put("/") { request.body }
-      delete("/") { halt 202 }
+      before { headers["x-counter"] = env["x-counter"].first.to_i + 1 if env["x-counter"] }
+
+      get("/") do
+        "example.com"
+      end
+
+      post("/") do
+        status 201
+        request.body
+      end
+
+      put("/") do
+        status 200
+        request.body
+      end
+
+      delete("/") do
+        halt 202
+      end
     end
   end
 
@@ -53,32 +68,40 @@ describe RequestInterceptor do
 
     it 'intercepts GET requests' do
       get_request = Net::HTTP::Get.new(uri)
+      get_request['x-counter'] = '42'
       response = http.request(get_request)
       expect(response).to be_kind_of(Net::HTTPOK)
+      expect(response['x-counter'].to_i).to eq(43)
     end
 
     it 'intercepts POST request' do
       post_request = Net::HTTP::Post.new(uri)
+      post_request['x-counter'] = '42'
       post_request.body = 'test'
       response = http.request(post_request)
 
-      expect(response).to be_kind_of(Net::HTTPOK)
+      expect(response).to be_kind_of(Net::HTTPCreated)
       expect(response.body).to eq(post_request.body)
+      expect(response['x-counter'].to_i).to eq(43)
     end
 
     it 'intercepts PUT requests' do
       put_request = Net::HTTP::Put.new(uri)
       put_request.body = 'test'
+      put_request['x-counter'] = '42'
       response = http.request(put_request)
 
       expect(response).to be_kind_of(Net::HTTPOK)
       expect(response.body).to eq(put_request.body)
+      expect(response['x-counter'].to_i).to eq(43)
     end
 
     it 'intercepts DELETE requests' do
       delete_request = Net::HTTP::Delete.new(uri)
+      delete_request['x-counter'] = '42'
       response = http.request(delete_request)
       expect(response).to be_kind_of(Net::HTTPAccepted)
+      expect(response['x-counter'].to_i).to eq(43)
     end
 
     it 'runs non-intercepted requests like normal' do
