@@ -9,8 +9,8 @@ describe RequestInterceptor do
     RequestInterceptor.define(/.*\.example.com/) do
       before { content_type 'text/plain' }
       get("/") { "example.com" }
-      post("/") { halt 201 }
-      put("/") { halt 204 }
+      post("/") { request.body }
+      put("/") { request.body }
       delete("/") { halt 202 }
     end
   end
@@ -59,14 +59,20 @@ describe RequestInterceptor do
 
     it 'intercepts POST request' do
       post_request = Net::HTTP::Post.new(uri)
+      post_request.body = 'test'
       response = http.request(post_request)
-      expect(response).to be_kind_of(Net::HTTPCreated)
+
+      expect(response).to be_kind_of(Net::HTTPOK)
+      expect(response.body).to eq(post_request.body)
     end
 
     it 'intercepts PUT requests' do
       put_request = Net::HTTP::Put.new(uri)
+      put_request.body = 'test'
       response = http.request(put_request)
-      expect(response).to be_kind_of(Net::HTTPNoContent)
+
+      expect(response).to be_kind_of(Net::HTTPOK)
+      expect(response.body).to eq(put_request.body)
     end
 
     it 'intercepts DELETE requests' do
