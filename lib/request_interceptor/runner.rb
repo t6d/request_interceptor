@@ -24,34 +24,26 @@ class RequestInterceptor::Runner
   end
 
   def request(request, body, &block)
-    # use Net::HTTP set_body_internal to keep the same behaviour as Net::HTTP
+    # use Net::HTTP set_body_internal to
+    # keep the same behaviour as Net::HTTP
     request.set_body_internal(body)
 
-    application = applications.find { |app| app.hostname_pattern === request["Host"] }
-    mock_request = Rack::MockRequest.new(application)
+    mock_request = mock_request_for_application(request)
+    mock_response = dispatch_mock_request(request, mock_request)
 
-    mock_response =
-      case request.method
-      when GET
-        mock_request.get(request.path)
-      when POST
-        mock_request.post(request.path, input: request.body)
-      when PUT
-        mock_request.put(request.path, input: request.body)
-      when DELETE
-        mock_request.delete(request.path)
-      else
-        raise NotImplementedError, "Simulating #{request.method} is not supported"
-      end
-
+    # create response
     status = RequestInterceptor::Status.from_code(mock_response.status)
-
     response = status.response_class.new("1.1", status.value, status.description)
-    mock_response.original_headers.each { |k, v| response.add_field(k, v) }
+
+    # copy header to response
+    mock_response.original_headers.each do |k, v|
+      response.add_field(k, v)
+    end
+
+    # copy body to response
     response.body = mock_response.body
 
     block.call(response) if block
-
     response
   end
 
@@ -88,5 +80,25 @@ class RequestInterceptor::Runner
     Net::HTTP.send(:define_method, :request, @original_request_method)
     Net::HTTP.send(:define_method, :start, @original_start_method)
     Net::HTTP.send(:define_method, :finish, @original_finish_method)
+  end
+
+  def mock_request_for_application(request)
+    application = applications.find { |app| app.hostname_pattern === request["Host"] }
+    Rack::MockRequest.new(application)
+  end
+
+  def dispatch_mock_request(request, mock_request)
+    case request.method
+    when GET
+      mock_request.get(request.path)
+    when POST
+      mock_request.post(request.path, input: request.body)
+    when PUT
+      mock_request.put(request.path, input: request.body)
+    when DELETE
+      mock_request.delete(request.path)
+    else
+      raise NotImplementedError, "Simulating #{request.method} is not supported"
+    end
   end
 end
