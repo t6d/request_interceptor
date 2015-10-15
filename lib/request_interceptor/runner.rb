@@ -24,6 +24,9 @@ class RequestInterceptor::Runner
   end
 
   def request(request, body, &block)
+    # use Net::HTTP set_body_internal to keep the same behaviour as Net::HTTP
+    request.set_body_internal(body)
+
     application = applications.find { |app| app.hostname_pattern === request["Host"] }
     mock_request = Rack::MockRequest.new(application)
 
@@ -32,9 +35,9 @@ class RequestInterceptor::Runner
       when GET
         mock_request.get(request.path)
       when POST
-        mock_request.post(request.path)
+        mock_request.post(request.path, input: request.body)
       when PUT
-        mock_request.put(request.path)
+        mock_request.put(request.path, input: request.body)
       when DELETE
         mock_request.delete(request.path)
       else
