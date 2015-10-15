@@ -5,6 +5,9 @@ require "rack/mock"
 
 class RequestInterceptor::Runner
   GET = "GET".freeze
+  POST = "POST".freeze
+  PUT = "PUT".freeze
+  DELETE = "DELETE".freeze
 
   attr_reader :applications
 
@@ -51,16 +54,24 @@ class RequestInterceptor::Runner
       case request.method
       when GET
         mock_request.get(request.path)
+      when POST
+        mock_request.post(request.path)
+      when PUT
+        mock_request.put(request.path)
+      when DELETE
+        mock_request.delete(request.path)
       else
         raise NotImplementedError, "Simulating #{request.method} is not supported"
       end
 
     status = RequestInterceptor::Status.from_code(mock_response.status)
+
     response = status.response_class.new("1.1", status.value, status.description)
     mock_response.original_headers.each { |k, v| response.add_field(k, v) }
     response.body = mock_response.body
 
     block.call(response) if block
+
     response
   end
 end

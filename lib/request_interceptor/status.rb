@@ -16,15 +16,16 @@ class RequestInterceptor::Status < Struct.new(:value, :description)
     @response_classes ||=
       begin
         wrapped_classes = Hash.new {  Net::HTTPUnknownResponse }
-        Net::HTTPResponse::CODE_TO_OBJ.inject(wrapped_classes) do |klasses, (code, klass)|
-          klasses[code] = Class.new(klass) do
-            def self.name
-              ancestors.first.name
-            end
-
+        Net::HTTPResponse::CODE_TO_OBJ.inject(wrapped_classes) do |classes, (code, original_class)|
+          new_class = Class.new(original_class) do
             attr_accessor :body
           end
-          klasses
+
+          new_class.define_singleton_method(:name) { original_class.name }
+          new_class.define_singleton_method(:to_s) { original_class.name }
+
+          classes[code] = new_class
+          classes
         end
       end
 
