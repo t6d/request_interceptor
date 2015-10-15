@@ -6,12 +6,11 @@ require 'request_interceptor/version'
 Gem::Specification.new do |spec|
   spec.name          = "request_interceptor"
   spec.version       = RequestInterceptor::VERSION
-  spec.authors       = ["Konstantin Tennhard"]
-  spec.email         = ["me@t6d.de"]
+  spec.authors       = ["Konstantin Tennhard", "Kevin Hughes"]
+  spec.email         = ["me@t6d.de", "kevinhughes27@gmail.com"]
 
-  spec.summary       = %q{TODO: Write a short summary, because Rubygems requires one.}
-  spec.description   = %q{TODO: Write a longer description or delete this line.}
-  spec.homepage      = "TODO: Put your gem's website or public repo URL here."
+  spec.summary       = %q{Sinatra based foreign API simulation for your test suite.}
+  spec.homepage      = "http://github.com/t6d/request_interceptor"
   spec.license       = "MIT"
 
   # Prevent pushing this gem to RubyGems.org by setting 'allowed_push_host', or
