@@ -4,12 +4,6 @@ require "net/http"
 require "rack/mock"
 
 class RequestInterceptor::Runner
-  class SocketSimulator < SimpleDelegator
-    def read_all(*)
-      __getobj__.read
-    end
-  end
-
   GET = "GET".freeze
 
   attr_reader :applications
