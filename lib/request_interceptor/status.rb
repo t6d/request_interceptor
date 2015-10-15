@@ -1,4 +1,4 @@
-class Interrupter::Status < Struct.new(:value, :description)
+class RequestInterceptor::Status < Struct.new(:value, :description)
   STATUSES = {
     "100": "Continue",
     "101": "Switching Protocols",

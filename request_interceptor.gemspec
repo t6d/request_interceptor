@@ -1,11 +1,11 @@
 # coding: utf-8
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'interrupter/version'
+require 'request_interceptor/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "interrupter"
-  spec.version       = Interrupter::VERSION
+  spec.name          = "request_interceptor"
+  spec.version       = RequestInterceptor::VERSION
   spec.authors       = ["Konstantin Tennhard"]
   spec.email         = ["me@t6d.de"]
 

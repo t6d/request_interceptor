@@ -1,22 +1,22 @@
 require 'spec_helper'
 
-describe Interrupter do
+describe RequestInterceptor do
   it 'has a version number' do
-    expect(Interrupter::VERSION).not_to be nil
+    expect(RequestInterceptor::VERSION).not_to be nil
   end
 
   it 'intercepts GET requests' do
-    example = Interrupter.define(/.*\.example.com/) do
+    example = RequestInterceptor.define(/.*\.example.com/) do
       before { content_type 'text/plain' }
       get("/") { "example.com" }
     end
 
-    google = Interrupter.define(/.*\.google.com/) do
+    google = RequestInterceptor.define(/.*\.google.com/) do
       before { content_type 'text/plain' }
       get("/") { "google.com" }
     end
 
-    Interrupter.run(example, google) do
+    RequestInterceptor.run(example, google) do
       expect(Net::HTTP.get(URI("http://test.example.com"))).to eq("example.com")
       expect(Net::HTTP.get(URI("http://test.google.com"))).to eq("google.com")
 

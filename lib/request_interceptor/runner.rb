@@ -3,7 +3,7 @@ require "net/http"
 
 require "rack"
 
-class Interrupter::Runner
+class RequestInterceptor::Runner
   class SocketSimulator < SimpleDelegator
     def read_all(*)
       __getobj__.read
@@ -61,7 +61,7 @@ class Interrupter::Runner
         raise NotImplementedError, "Simulating #{request.method} is not supported"
       end
 
-    status = Interrupter::Status.from_code(mock_response.status)
+    status = RequestInterceptor::Status.from_code(mock_response.status)
     response = status.response_class.new("1.1", status.value, status.description)
     mock_response.original_headers.each { |k, v| response.add_field(k, v) }
     response.body = mock_response.body

@@ -1,6 +1,6 @@
-require "interrupter/version"
+require "request_interceptor/version"
 
-module Interrupter
+module RequestInterceptor
   def self.define(hostname_pattern, &block)
     Class.new(Application, &block).tap do |app|
       app.hostname_pattern = hostname_pattern
@@ -12,6 +12,6 @@ module Interrupter
   end
 end
 
-require "interrupter/application"
-require "interrupter/runner"
-require "interrupter/status"
+require "request_interceptor/application"
+require "request_interceptor/runner"
+require "request_interceptor/status"
