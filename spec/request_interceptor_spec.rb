@@ -37,6 +37,21 @@ describe RequestInterceptor do
     end
   end
 
+  it 'should keep a log of all requests and responses' do
+    log = RequestInterceptor.run(example, google) do
+      Net::HTTP.get(URI("http://test.example.com"))
+      Net::HTTP.get(URI("http://test.google.com"))
+    end
+
+    expect(log.count).to eq(2)
+
+    expect(log.first.request.path).to eq("/")
+    expect(log.first.request.uri).to eq(URI("http://test.example.com"))
+
+    expect(log.last.request.path).to eq("/")
+    expect(log.last.request.uri).to eq(URI("http://test.google.com"))
+  end
+
   context 'when using the Net::HTTP convenience methods' do
     around do |spec|
       RequestInterceptor.run(example, google) { spec.run }

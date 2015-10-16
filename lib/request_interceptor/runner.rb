@@ -10,15 +10,18 @@ class RequestInterceptor::Runner
   DELETE = "DELETE".freeze
 
   attr_reader :applications
+  attr_reader :transactions
 
   def initialize(*applications)
     @applications = applications
+    @transactions = []
   end
 
   def run(&simulation)
     cache_original_nethttp_methods
     override_nethttp_methods
     simulation.call
+    transactions
   ensure
     restore_nethttp_methods
   end
@@ -27,6 +30,7 @@ class RequestInterceptor::Runner
     # use Net::HTTP set_body_internal to
     # keep the same behaviour as Net::HTTP
     request.set_body_internal(body)
+    response = nil
 
     if mock_request = mock_request_for_application(request)
       mock_response = dispatch_mock_request(request, mock_request)
@@ -43,11 +47,15 @@ class RequestInterceptor::Runner
       # copy body to response
       response.body = mock_response.body
 
-      block.call(response) if block
-      response
+      # Net::HTTP#request yields the response
+      block.call(net_http_response) if block
     else
-      real_request(request)
+      response = real_request(request)
     end
+
+    log_transaction(request, response)
+
+    response
   end
 
   private
@@ -113,5 +121,9 @@ class RequestInterceptor::Runner
     uri = request.uri
     http = Net::HTTP.new(uri.host, uri.port)
     http.request(request)
+  end
+
+  def log_transaction(request, response)
+    transactions << RequestInterceptor::Transaction.new(request, response)
   end
 end
