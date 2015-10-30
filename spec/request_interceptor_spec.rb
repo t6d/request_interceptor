@@ -125,4 +125,70 @@ describe RequestInterceptor do
       expect(response.body).to match /Stack Overflow/im
     end
   end
+
+  context 'with a custom class as application template' do
+    let(:template) do
+      Class.new(Sinatra::Application) do
+        def answer
+          42
+        end
+      end
+    end
+
+    around do |spec|
+      default_template = RequestInterceptor.template
+      RequestInterceptor.template = template
+      spec.run
+      RequestInterceptor.template = default_template
+    end
+
+    specify 'interceptors should inherit from the custom class template' do
+      interceptor = RequestInterceptor.define('example.com') do
+        get '/' do
+          content_type 'text/plain'
+          answer.to_s
+        end
+      end
+
+      RequestInterceptor.run(interceptor) do
+        uri = URI.parse("http://example.com/")
+        expect(Net::HTTP.get(uri)).to eq("42")
+      end
+    end
+  end
+
+  context 'with a proc as application template' do
+    let(:template) do
+      proc do
+        def answer
+          42
+        end
+      end
+    end
+
+    around do |spec|
+      default_template = RequestInterceptor.template
+      RequestInterceptor.template = template
+      spec.run
+      RequestInterceptor.template = default_template
+    end
+
+    specify "the template should be a subclass of RequestInterceptor::Application" do
+      RequestInterceptor.template < RequestInterceptor::Application
+    end
+
+    specify 'interceptors should inherit from the custom class template' do
+      interceptor = RequestInterceptor.define('example.com') do
+        get '/' do
+          content_type 'text/plain'
+          answer.to_s
+        end
+      end
+
+      RequestInterceptor.run(interceptor) do
+        uri = URI.parse("http://example.com/")
+        expect(Net::HTTP.get(uri)).to eq("42")
+      end
+    end
+  end
 end
