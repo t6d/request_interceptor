@@ -25,8 +25,8 @@ class RequestInterceptor
     @template || Application
   end
 
-  def self.define(&application_definition)
-    Class.new(template, &application_definition)
+  def self.define(super_class = nil, &application_definition)
+    Class.new(super_class || template, &application_definition)
   end
 
   def self.run(*args, &simulation)
