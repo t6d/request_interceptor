@@ -81,15 +81,22 @@ describe RequestInterceptor do
       RequestInterceptor.run(example, google) { spec.run }
     end
 
-    it 'intercepts GET requests' do
+    it 'intercepts GET requests when using Net::HTTP#request directly' do
       get_request = Net::HTTP::Get.new(uri)
       get_request['x-counter'] = '42'
       response = http.request(get_request)
       expect(response).to be_kind_of(Net::HTTPOK)
       expect(response['x-counter'].to_i).to eq(43)
+      expect(response.uri).to eq(uri)
     end
 
-    it 'intercepts POST request' do
+    it 'intercepts GET requests when using Net::HTTP#get' do
+      response = http.get(uri.path, 'x-counter' => '42')
+      expect(response).to be_kind_of(Net::HTTPOK)
+      expect(response['x-counter'].to_i).to eq(43)
+    end
+
+    it 'intercepts POST request when using Net::HTTP#request directly' do
       post_request = Net::HTTP::Post.new(uri)
       post_request['x-counter'] = '42'
       post_request.body = 'test'
@@ -98,9 +105,19 @@ describe RequestInterceptor do
       expect(response).to be_kind_of(Net::HTTPCreated)
       expect(response.body).to eq(post_request.body)
       expect(response['x-counter'].to_i).to eq(43)
+      expect(response.uri).to eq(uri)
     end
 
-    it 'intercepts PUT requests' do
+    it 'intercepts POST request when using Net::HTTP#post' do
+      body = 'test'
+      response = http.post(uri.path, body, 'x-counter' => '42')
+
+      expect(response).to be_kind_of(Net::HTTPCreated)
+      expect(response.body).to eq(body)
+      expect(response['x-counter'].to_i).to eq(43)
+    end
+
+    it 'intercepts PUT requests when using NetHTTP#request directly' do
       put_request = Net::HTTP::Put.new(uri)
       put_request.body = 'test'
       put_request['x-counter'] = '42'
@@ -109,12 +126,29 @@ describe RequestInterceptor do
       expect(response).to be_kind_of(Net::HTTPOK)
       expect(response.body).to eq(put_request.body)
       expect(response['x-counter'].to_i).to eq(43)
+      expect(response.uri).to eq(uri)
     end
 
-    it 'intercepts DELETE requests' do
+    it 'intercepts PUT requests when using Net::HTTP#put' do
+      body = 'test'
+      response = http.put(uri.path, body, 'x-counter' => '42')
+
+      expect(response).to be_kind_of(Net::HTTPOK)
+      expect(response.body).to eq(body)
+      expect(response['x-counter'].to_i).to eq(43)
+    end
+
+    it 'intercepts DELETE requests when using Net::HTTP#request directly' do
       delete_request = Net::HTTP::Delete.new(uri)
       delete_request['x-counter'] = '42'
       response = http.request(delete_request)
+      expect(response).to be_kind_of(Net::HTTPAccepted)
+      expect(response['x-counter'].to_i).to eq(43)
+      expect(response.uri).to eq(uri)
+    end
+
+    it 'intercepts DELETE requests when using Net::HTTP#delete' do
+      response = http.delete(uri.path, 'x-counter' => '42')
       expect(response).to be_kind_of(Net::HTTPAccepted)
       expect(response['x-counter'].to_i).to eq(43)
     end

@@ -44,11 +44,20 @@ class RequestInterceptor::Runner
         response.add_field(k, v)
       end
 
+      # copy uri
+      response.uri = request.uri
+
       # copy body to response
       response.body = mock_response.body
 
-      # Net::HTTP#request yields the response
-      block.call(response) if block
+      # replace Net::HTTP::Response#read_body
+      def response.read_body(_, &block)
+        block.call(@body) unless block.nil?
+        @body
+      end
+
+      # yield the response because Net::HTTP#request does
+      block.call(response) unless block.nil?
     else
       response = real_request(http_context, request, body, &block)
     end
