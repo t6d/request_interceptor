@@ -9,7 +9,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Konstantin Tennhard", "Kevin Hughes"]
   spec.email         = ["me@t6d.de", "kevinhughes27@gmail.com"]
 
-  spec.summary       = %q{Sinatra based foreign API simulation for your test suite.}
+  spec.summary       = %q{Sinatra based foreign API simulation}
   spec.homepage      = "http://github.com/t6d/request_interceptor"
   spec.license       = "MIT"
 

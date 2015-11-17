@@ -1,8 +1,6 @@
 # Request Interceptor
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/request_interceptor`. To experiment with that code, run `bin/console` for an interactive prompt.
-
-TODO: Delete this and the text above, and describe your gem
+Request interceptor is a library for simulating foreign APIs using Sinatra applcations.
 
 ## Installation
 
@@ -22,18 +20,56 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+Once installed, request interceptors can be defined as follows:
 
-## Development
+```ruby
+app = RequestInterceptor.define do
+  get "/" do
+    content_type "text/plain"
+    "Hello World"
+  end
+end
+```
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+By default, request interceptors are `Sinatra` applications, but any `Rack` compatible application works.
+To intercept HTTP requests, the code performing the request must be wrapped in an `RequestInterceptor#run` block:
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+```ruby
+interceptor = RequestInterceptor.new(/.*example\.com$/ => app)
+interceptor.run do
+  Net::HTTP.get(URI("http://example.com/")) # => "Hello World"
+end
+```
+
+`RequestInterceptor` instances are initialized with hash mapping hostname patterns to applications.
+The patterns are later matched against the hostname of the URI associated with a particular request.
+In case of a match, the corresponding application is used to serve the request.
+Otherwise, a real HTTP request is performed.
+
+For the sake of convenience, the code above can be shortened using `RequestInterceptor.run`:
+
+```ruby
+log = RequestInterceptor.run(/.*example\.com$/ => app) do
+  Net::HTTP.get(URI("http://example.com/")) # => "Hello World"
+end
+```
+
+In both cases, the result is a transaction log.
+Each entry in the transaction log is a `RequestInterceptor::Transaction`.
+A transaction is simply request/response pair.
+The request can be obtained using the equally named `#request` method.
+The `#response` method returns the response that corresponds to the particular request.
+The code above would result in a transaction log with one entry:
+
+```ruby
+log.count # => 1
+log.first.request # => Rack::MockRequest
+log.first.response # => Rack::MockResponse
+```
 
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at (t6d/request_interceptor)[https://github.com/t6d/request_interceptor].
-
 
 ## License
 
