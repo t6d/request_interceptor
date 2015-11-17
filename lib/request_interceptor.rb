@@ -17,17 +17,19 @@ module RequestInterceptor
     @template || Application
   end
 
-  def self.define(hostname_pattern, &application_definition)
-    application = Class.new(template, &application_definition)
-    InterceptorDefinition.new(application, hostname_pattern)
+  def self.define(&application_definition)
+    Class.new(template, &application_definition)
   end
 
-  def self.run(*applications, &simulation)
-    Runner.new(*applications).run(&simulation)
+  def self.new(*args)
+    Runner.new(*args)
+  end
+
+  def self.run(*args, &simulation)
+    new(*args).run(&simulation)
   end
 end
 
 require "request_interceptor/application"
-require "request_interceptor/interceptor_definition"
 require "request_interceptor/runner"
 require "request_interceptor/status"

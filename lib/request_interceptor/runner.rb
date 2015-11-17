@@ -12,12 +12,23 @@ class RequestInterceptor::Runner
   attr_reader :applications
   attr_reader :transactions
 
-  def initialize(*applications)
-    @applications = applications
+  def initialize(applications)
+    @applications = {}
     @transactions = []
+
+    applications.each { |pattern, application| self[pattern] = application }
+  end
+
+  def [](pattern)
+    @applications[pattern]
+  end
+
+  def []=(pattern, application)
+    @applications[pattern] = application
   end
 
   def run(&simulation)
+    clear_transaction_log
     cache_original_net_http_methods
     override_net_http_methods
     simulation.call
@@ -67,7 +78,12 @@ class RequestInterceptor::Runner
     response
   end
 
+
   private
+
+  def clear_transaction_log
+    @transactions = []
+  end
 
   def cache_original_net_http_methods
     @original_request_method = Net::HTTP.instance_method(:request)
@@ -109,7 +125,7 @@ class RequestInterceptor::Runner
   end
 
   def mock_request_for_application(http_context, request)
-    application = applications.find { |app| app.hostname_pattern === http_context.address }
+    _, application = applications.find { |pattern, _| pattern === http_context.address }
     Rack::MockRequest.new(application) if application
   end
 
