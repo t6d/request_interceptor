@@ -26,13 +26,13 @@ class RequestInterceptor::Runner
     restore_net_http_methods
   end
 
-  def request(request, body, &block)
+  def request(http_context, request, body, &block)
     # use Net::HTTP set_body_internal to
     # keep the same behaviour as Net::HTTP
     request.set_body_internal(body)
     response = nil
 
-    if mock_request = mock_request_for_application(request)
+    if mock_request = mock_request_for_application(http_context, request)
       mock_response = dispatch_mock_request(request, mock_request)
 
       # create response
@@ -48,9 +48,9 @@ class RequestInterceptor::Runner
       response.body = mock_response.body
 
       # Net::HTTP#request yields the response
-      block.call(net_http_response) if block
+      block.call(response) if block
     else
-      response = real_request(request)
+      response = real_request(http_context, request, body, &block)
     end
 
     log_transaction(request, response)
@@ -82,19 +82,25 @@ class RequestInterceptor::Runner
       end
 
       define_method(:request) do |request, body = nil, &block|
-        runner.request(request, body, &block)
+        runner.request(self, request, body, &block)
       end
     end
   end
 
   def restore_net_http_methods(instance = nil)
-    Net::HTTP.send(:define_method, :request, @original_request_method)
-    Net::HTTP.send(:define_method, :start, @original_start_method)
-    Net::HTTP.send(:define_method, :finish, @original_finish_method)
+    if instance.nil?
+      Net::HTTP.send(:define_method, :request, @original_request_method)
+      Net::HTTP.send(:define_method, :start, @original_start_method)
+      Net::HTTP.send(:define_method, :finish, @original_finish_method)
+    else
+      instance.define_singleton_method(:request, @original_request_method)
+      instance.define_singleton_method(:start, @original_start_method)
+      instance.define_singleton_method(:finish, @original_finish_method)
+    end
   end
 
-  def mock_request_for_application(request)
-    application = applications.find { |app| app.hostname_pattern === request["Host"] }
+  def mock_request_for_application(http_context, request)
+    application = applications.find { |app| app.hostname_pattern === http_context.address }
     Rack::MockRequest.new(application) if application
   end
 
@@ -115,12 +121,9 @@ class RequestInterceptor::Runner
     end
   end
 
-  def real_request(request)
-    restore_nethttp_methods
-
-    uri = request.uri
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.request(request)
+  def real_request(http_context, request, body, &block)
+    restore_net_http_methods(http_context)
+    http_context.request(request, body, &block)
   end
 
   def log_transaction(request, response)
