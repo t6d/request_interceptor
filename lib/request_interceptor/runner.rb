@@ -18,12 +18,12 @@ class RequestInterceptor::Runner
   end
 
   def run(&simulation)
-    cache_original_nethttp_methods
-    override_nethttp_methods
+    cache_original_net_http_methods
+    override_net_http_methods
     simulation.call
     transactions
   ensure
-    restore_nethttp_methods
+    restore_net_http_methods
   end
 
   def request(request, body, &block)
@@ -60,13 +60,13 @@ class RequestInterceptor::Runner
 
   private
 
-  def cache_original_nethttp_methods
+  def cache_original_net_http_methods
     @original_request_method = Net::HTTP.instance_method(:request)
     @original_start_method = Net::HTTP.instance_method(:start)
     @original_finish_method = Net::HTTP.instance_method(:finish)
   end
 
-  def override_nethttp_methods
+  def override_net_http_methods
     runner = self
 
     Net::HTTP.class_eval do
@@ -87,7 +87,7 @@ class RequestInterceptor::Runner
     end
   end
 
-  def restore_nethttp_methods
+  def restore_net_http_methods(instance = nil)
     Net::HTTP.send(:define_method, :request, @original_request_method)
     Net::HTTP.send(:define_method, :start, @original_start_method)
     Net::HTTP.send(:define_method, :finish, @original_finish_method)
