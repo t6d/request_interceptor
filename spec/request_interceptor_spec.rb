@@ -31,15 +31,16 @@ describe RequestInterceptor do
   end
 
   let(:google) do
-    custom_super_class = Class.new(Sinatra::Application) do
-      def domain
+    custom_super_class = Class.new do
+      def self.domain
         "google.com"
       end
     end
 
     RequestInterceptor.define(custom_super_class) do
-      before { content_type 'text/plain' }
-      get("/") { domain }
+      def self.call(env)
+        [200, {}, domain]
+      end
     end
   end
 
