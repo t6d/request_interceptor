@@ -6,7 +6,7 @@ describe RequestInterceptor do
   end
 
   let(:example) do
-    RequestInterceptor.define(/.*\.example.com/) do
+    RequestInterceptor.define do
       before { content_type 'text/plain' }
       before { headers["x-counter"] = env["x-counter"].first.to_i + 1 if env["x-counter"] }
 
@@ -31,14 +31,25 @@ describe RequestInterceptor do
   end
 
   let(:google) do
-    google = RequestInterceptor.define(/.*\.google.com/) do
-      before { content_type 'text/plain' }
-      get("/") { "google.com" }
+    custom_super_class = Class.new do
+      def self.domain
+        "google.com"
+      end
+    end
+
+    RequestInterceptor.define(custom_super_class) do
+      def self.call(env)
+        [200, {}, domain]
+      end
     end
   end
 
+  subject(:interceptor) do
+    RequestInterceptor.new(/.*\.example\.com/ => example, /.*\.google\.com/ => google)
+  end
+
   it 'should keep a log of all requests and responses' do
-    log = RequestInterceptor.run(example, google) do
+    log = interceptor.run do
       Net::HTTP.get(URI("http://test.example.com"))
       Net::HTTP.get(URI("http://test.google.com"))
     end
@@ -54,7 +65,7 @@ describe RequestInterceptor do
 
   context 'when using the Net::HTTP convenience methods' do
     around do |spec|
-      RequestInterceptor.run(example, google) { spec.run }
+      interceptor.run { spec.run }
     end
 
     it 'support .get' do
@@ -78,7 +89,7 @@ describe RequestInterceptor do
     let(:http) { Net::HTTP.new(uri.host) }
 
     around do |spec|
-      RequestInterceptor.run(example, google) { spec.run }
+      interceptor.run { spec.run }
     end
 
     it 'intercepts GET requests when using Net::HTTP#request directly' do
@@ -156,7 +167,7 @@ describe RequestInterceptor do
     it 'runs non-intercepted requests like normal' do
       request = Net::HTTP::Get.new( URI.parse("http://stackoverflow.com/") )
       response = Net::HTTP.new("stackoverflow.com").request(request)
-      expect(response.body).to match /Stack Overflow/im
+      expect(response.body).to match(/Stack Overflow/im)
     end
   end
 
@@ -177,14 +188,14 @@ describe RequestInterceptor do
     end
 
     specify 'interceptors should inherit from the custom class template' do
-      interceptor = RequestInterceptor.define('example.com') do
+      interceptor = RequestInterceptor.define do
         get '/' do
           content_type 'text/plain'
           answer.to_s
         end
       end
 
-      RequestInterceptor.run(interceptor) do
+      RequestInterceptor.run("example.com" => interceptor) do
         uri = URI.parse("http://example.com/")
         expect(Net::HTTP.get(uri)).to eq("42")
       end
@@ -212,14 +223,14 @@ describe RequestInterceptor do
     end
 
     specify 'interceptors should inherit from the custom class template' do
-      interceptor = RequestInterceptor.define('example.com') do
+      interceptor = RequestInterceptor.define do
         get '/' do
           content_type 'text/plain'
           answer.to_s
         end
       end
 
-      RequestInterceptor.run(interceptor) do
+      RequestInterceptor.run("example.com" => interceptor) do
         uri = URI.parse("http://example.com/")
         expect(Net::HTTP.get(uri)).to eq("42")
       end
