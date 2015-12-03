@@ -236,4 +236,24 @@ describe RequestInterceptor do
       end
     end
   end
+
+  context 'when nested' do
+    let(:other_example) do
+      RequestInterceptor.define do
+        get "/" do
+          "hijacked"
+        end
+      end
+    end
+
+    specify 'the inner most interceptor should serve the request and unregister itself cleanly afterwards' do
+      RequestInterceptor.run("example.com" => example) do
+        RequestInterceptor.run("example.com" => other_example) do
+          expect(Net::HTTP.get(URI("http://example.com/"))).to eq("hijacked")
+        end
+
+        expect(Net::HTTP.get(URI("http://example.com/"))).to eq("example.com")
+      end
+    end
+  end
 end
