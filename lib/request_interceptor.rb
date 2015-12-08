@@ -93,11 +93,12 @@ class RequestInterceptor
 
       # yield the response because Net::HTTP#request does
       block.call(response) unless block.nil?
+
+      # log intercepted transaction
+      log_transaction(request, response)
     else
       response = real_request(http_context, request, body, &block)
     end
-
-    log_transaction(request, response)
 
     response
   end

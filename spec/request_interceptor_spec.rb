@@ -246,7 +246,7 @@ describe RequestInterceptor do
       end
     end
 
-    specify 'the inner most interceptor should serve the request and unregister itself cleanly afterwards' do
+    specify 'the inner interceptor should serve the request and unregister itself cleanly afterwards' do
       RequestInterceptor.run("example.com" => example) do
         RequestInterceptor.run("example.com" => other_example) do
           expect(Net::HTTP.get(URI("http://example.com/"))).to eq("hijacked")
@@ -254,6 +254,19 @@ describe RequestInterceptor do
 
         expect(Net::HTTP.get(URI("http://example.com/"))).to eq("example.com")
       end
+    end
+
+    specify 'the inner interceptor should not log calls handled by the outer interceptor' do
+      outer_log = RequestInterceptor.run("outer.com" => example) do
+        inner_log = RequestInterceptor.run("inner.com" => example) do
+          Net::HTTP.get(URI("http://outer.com/"))
+          Net::HTTP.get(URI("http://inner.com/"))
+        end
+
+        expect(inner_log.count).to eq(1)
+      end
+
+      expect(outer_log.count).to eq(1)
     end
   end
 end
