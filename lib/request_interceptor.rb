@@ -4,7 +4,7 @@ require "net/http"
 require "rack/mock"
 
 class RequestInterceptor
-  class Transaction < Struct.new(:request, :reponse); end
+  class Transaction < Struct.new(:request, :response); end
 
   GET = "GET".freeze
   POST = "POST".freeze
