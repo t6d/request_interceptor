@@ -67,6 +67,36 @@ log.first.request # => Rack::MockRequest
 log.first.response # => Rack::MockResponse
 ```
 
+### Pre-configured hostnames and interceptor customization
+
+Interceptors further support pre-configured hostnames and customization of existing interceptors:
+
+```ruby
+customized_app = app.customize do
+  hostname "example.de"
+
+  get "/" do
+    content_type "text/plain"
+    "Hallo Welt"
+  end
+end
+
+customized_app.intercept do
+  response = Net::HTTP.get(URI("http://example.de/")) # => "Hello World"
+  response == "Hallo Welt" # => true
+end
+```
+
+These two features are only available for Sinatra based interceptors that inherit from `RequestInterceptor::Application`, which is the default for all interceptors that have been defined using `RequestInterceptor.define` if no other template class through `RequestInterceptor.template=` has been configured.
+The pre-configured hostname can be overriden by supplying a different hostname to the `.intercept` method:
+
+```ruby
+customized_app.intercept("example.ch") do
+  response = Net::HTTP.get(URI("http://example.ch/")) # => "Hello World"
+  response == "Hallo Welt" # => true
+end
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at (t6d/request_interceptor)[https://github.com/t6d/request_interceptor].

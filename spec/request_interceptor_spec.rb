@@ -63,6 +63,49 @@ describe RequestInterceptor do
     expect(log.last.request.uri).to eq(URI("http://test.google.com"))
   end
 
+  it 'should allow to customize existing request interceptors' do
+    modified_example = example.customize do
+      get("/") do
+        "example.io"
+      end
+    end
+
+    modified_example.intercept('example.io') do
+      response = Net::HTTP.get(URI("http://example.io/"))
+      expect(response).to eq("example.io")
+    end
+  end
+
+  it 'should allow to set a pre-configured hostname for an application' do
+    modified_example = example.customize do
+      hostname "example.io"
+
+      get("/") do
+        "example.io"
+      end
+    end
+
+    modified_example.intercept do
+      response = Net::HTTP.get(URI("http://example.io/"))
+      expect(response).to eq("example.io")
+    end
+  end
+
+  it 'should allow to override a pre-configured hostname for an application' do
+    modified_example = example.customize do
+      hostname "example.io"
+
+      get("/") do
+        "example.io"
+      end
+    end
+
+    modified_example.intercept("example.cc") do
+      response = Net::HTTP.get(URI("http://example.cc/"))
+      expect(response).to eq("example.io")
+    end
+  end
+
   context 'when using the Net::HTTP convenience methods' do
     around do |spec|
       interceptor.run { spec.run }
