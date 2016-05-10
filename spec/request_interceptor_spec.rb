@@ -91,18 +91,35 @@ describe RequestInterceptor do
     end
   end
 
-  it 'should allow to override a pre-configured hostname for an application' do
+  it 'should allow to forward arguments to the application intializer' do
     modified_example = example.customize do
-      hostname "example.io"
+      hostname "example.com"
 
-      get("/") do
-        "example.io"
+      attr_reader :language
+
+      def initialize(language = nil)
+        @language = language
+        super()
+      end
+
+      get "/" do
+        case language
+        when :de
+          "Hallo Welt"
+        else
+          "Hello World"
+        end
       end
     end
 
-    modified_example.intercept("example.cc") do
-      response = Net::HTTP.get(URI("http://example.cc/"))
-      expect(response).to eq("example.io")
+    modified_example.intercept(:de) do
+      response = Net::HTTP.get(URI("http://example.com/"))
+      expect(response).to eq("Hallo Welt")
+    end
+
+    modified_example.intercept do
+      response = Net::HTTP.get(URI("http://example.com/"))
+      expect(response).to eq("Hello World")
     end
   end
 

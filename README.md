@@ -88,12 +88,36 @@ end
 ```
 
 These two features are only available for Sinatra based interceptors that inherit from `RequestInterceptor::Application`, which is the default for all interceptors that have been defined using `RequestInterceptor.define` if no other template class through `RequestInterceptor.template=` has been configured.
-The pre-configured hostname can be overriden by supplying a different hostname to the `.intercept` method:
+
+### Constructor argument forwarding
+
+Any arugments provided to the `.intercept` method are forwarded to the interceptor's constructor:
 
 ```ruby
-customized_app.intercept("example.ch") do
-  response = Net::HTTP.get(URI("http://example.ch/")) # => "Hello World"
+multilingual_app = RequestInterceptor.define do
+  hostname "example.com"
+
+  attr_reader :language
+
+  def initialize(language = nil)
+    @language = language
+    super()
+  end
+
+  get "/" do
+    content_type "text/plain"
+    language == :de ? "Hallo Welt" : "Hello World"
+  end
+end
+
+multilingual_app.intercept(:de) do
+  response = Net::HTTP.get(URI("http://example.com/"))
   response == "Hallo Welt" # => true
+end
+
+multilingual_app.intercept do
+  response = Net::HTTP.get(URI("http://example.com/"))
+  response = "Hello World" # => true
 end
 ```
 
