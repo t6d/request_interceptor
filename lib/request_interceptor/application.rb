@@ -5,13 +5,13 @@ class RequestInterceptor::Application < Sinatra::Base
     RequestInterceptor.define(self, &customizations)
   end
 
-  def self.intercept(hostname, *args, &test)
-    RequestInterceptor.run(hostname => self.new(*args), &test)
+  def self.intercept(host, *args, &test)
+    RequestInterceptor.run(host => self.new(*args), &test)
   end
 
-  def self.hostname(hostname)
+  def self.host(host)
     define_singleton_method(:intercept) do |*args, &test|
-      super(hostname, *args, &test)
+      super(host, *args, &test)
     end
   end
 

@@ -78,7 +78,7 @@ describe RequestInterceptor do
 
   it 'should allow to set a pre-configured hostname for an application' do
     modified_example = example.customize do
-      hostname "example.io"
+      host "example.io"
 
       get("/") do
         "example.io"
@@ -93,7 +93,7 @@ describe RequestInterceptor do
 
   it 'should allow to forward arguments to the application intializer' do
     modified_example = example.customize do
-      hostname "example.com"
+      host "example.com"
 
       attr_reader :language
 

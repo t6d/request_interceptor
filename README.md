@@ -73,7 +73,7 @@ Interceptors further support pre-configured hostnames and customization of exist
 
 ```ruby
 customized_app = app.customize do
-  hostname "example.de"
+  host "example.de"
 
   get "/" do
     content_type "text/plain"
@@ -95,7 +95,7 @@ Any arugments provided to the `.intercept` method are forwarded to the intercept
 
 ```ruby
 multilingual_app = RequestInterceptor.define do
-  hostname "example.com"
+  host "example.com"
 
   attr_reader :language
 
