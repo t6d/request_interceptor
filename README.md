@@ -67,6 +67,60 @@ log.first.request # => Rack::MockRequest
 log.first.response # => Rack::MockResponse
 ```
 
+### Pre-configured hostnames and interceptor customization
+
+Interceptors further support pre-configured hostnames and customization of existing interceptors:
+
+```ruby
+customized_app = app.customize do
+  host "example.de"
+
+  get "/" do
+    content_type "text/plain"
+    "Hallo Welt"
+  end
+end
+
+customized_app.intercept do
+  response = Net::HTTP.get(URI("http://example.de/")) # => "Hello World"
+  response == "Hallo Welt" # => true
+end
+```
+
+These two features are only available for Sinatra based interceptors that inherit from `RequestInterceptor::Application`, which is the default for all interceptors that have been defined using `RequestInterceptor.define` if no other template class through `RequestInterceptor.template=` has been configured.
+
+### Constructor argument forwarding
+
+Any arugments provided to the `.intercept` method are forwarded to the interceptor's constructor:
+
+```ruby
+multilingual_app = RequestInterceptor.define do
+  host "example.com"
+
+  attr_reader :language
+
+  def initialize(language = nil)
+    @language = language
+    super()
+  end
+
+  get "/" do
+    content_type "text/plain"
+    language == :de ? "Hallo Welt" : "Hello World"
+  end
+end
+
+multilingual_app.intercept(:de) do
+  response = Net::HTTP.get(URI("http://example.com/"))
+  response == "Hallo Welt" # => true
+end
+
+multilingual_app.intercept do
+  response = Net::HTTP.get(URI("http://example.com/"))
+  response = "Hello World" # => true
+end
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at (t6d/request_interceptor)[https://github.com/t6d/request_interceptor].

@@ -63,6 +63,66 @@ describe RequestInterceptor do
     expect(log.last.request.uri).to eq(URI("http://test.google.com"))
   end
 
+  it 'should allow to customize existing request interceptors' do
+    modified_example = example.customize do
+      get("/") do
+        "example.io"
+      end
+    end
+
+    modified_example.intercept('example.io') do
+      response = Net::HTTP.get(URI("http://example.io/"))
+      expect(response).to eq("example.io")
+    end
+  end
+
+  it 'should allow to set a pre-configured hostname for an application' do
+    modified_example = example.customize do
+      host "example.io"
+
+      get("/") do
+        "example.io"
+      end
+    end
+
+    modified_example.intercept do
+      response = Net::HTTP.get(URI("http://example.io/"))
+      expect(response).to eq("example.io")
+    end
+  end
+
+  it 'should allow to forward arguments to the application intializer' do
+    modified_example = example.customize do
+      host "example.com"
+
+      attr_reader :language
+
+      def initialize(language = nil)
+        @language = language
+        super()
+      end
+
+      get "/" do
+        case language
+        when :de
+          "Hallo Welt"
+        else
+          "Hello World"
+        end
+      end
+    end
+
+    modified_example.intercept(:de) do
+      response = Net::HTTP.get(URI("http://example.com/"))
+      expect(response).to eq("Hallo Welt")
+    end
+
+    modified_example.intercept do
+      response = Net::HTTP.get(URI("http://example.com/"))
+      expect(response).to eq("Hello World")
+    end
+  end
+
   context 'when using the Net::HTTP convenience methods' do
     around do |spec|
       interceptor.run { spec.run }
