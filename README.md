@@ -91,7 +91,7 @@ These two features are only available for Sinatra based interceptors that inheri
 
 ### Constructor argument forwarding
 
-Any arugments provided to the `.intercept` method are forwarded to the interceptor's constructor:
+Any arguments provided to the `.intercept` method are forwarded to the interceptor's constructor:
 
 ```ruby
 multilingual_app = RequestInterceptor.define do
@@ -117,7 +117,7 @@ end
 
 multilingual_app.intercept do
   response = Net::HTTP.get(URI("http://example.com/"))
-  response = "Hello World" # => true
+  response == "Hello World" # => true
 end
 ```
 
