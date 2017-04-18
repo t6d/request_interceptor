@@ -4,7 +4,14 @@ require "net/http"
 require "rack/mock"
 
 class RequestInterceptor
-  class Transaction < Struct.new(:request, :response); end
+  Transaction = Struct.new(:request, :response)
+
+  Restart = Struct.new(:required, :instructions) do
+    protected :required
+    def required?
+      !!required
+    end
+  end
 
   GET = "GET".freeze
   POST = "POST".freeze
@@ -103,6 +110,25 @@ class RequestInterceptor
     response
   end
 
+  def start(http_context, &block)
+    self.restart = Restart.new(true, block)
+    http_context.instance_variable_set(:@started, true)
+    return block.call(http_context) if block
+    http_context
+  end
+
+  def finish(http_context)
+    http_context.instance_variable_set(:@started, false)
+    nil
+  end
+
+  protected
+
+  attr_writer :restart
+
+  def restart
+    @restart || Restart.new(false)
+  end
 
   private
 
@@ -120,21 +146,23 @@ class RequestInterceptor
     runner = self
 
     Net::HTTP.class_eval do
-      def start
-        @started = true
-        return yield(self) if block_given?
-        self
-      end
-
-      def finish
-        @started = false
-        nil
-      end
-
-      define_method(:request) do |request, body = nil, &block|
-        runner.request(self, request, body, &block)
-      end
+      define_method(:start) { |&block| runner.start(self, &block) }
+      define_method(:finish) { runner.finish(self) }
+      define_method(:request) { |request, body = nil, &block| runner.request(self, request, body, &block) }
     end
+  end
+
+  def real_request(http_context, request, body, &block)
+    http_context.finish if restart.required?
+
+    restore_net_http_methods(http_context)
+
+    if restart.required?
+      http_context.start(&restart.instructions)
+      self.restart = nil
+    end
+
+    http_context.request(request, body, &block)
   end
 
   def restore_net_http_methods(instance = nil)
@@ -169,11 +197,6 @@ class RequestInterceptor
     else
       raise NotImplementedError, "Simulating #{request.method} is not supported"
     end
-  end
-
-  def real_request(http_context, request, body, &block)
-    restore_net_http_methods(http_context)
-    http_context.request(request, body, &block)
   end
 
   def log_transaction(request, response)
