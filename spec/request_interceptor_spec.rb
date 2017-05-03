@@ -8,7 +8,7 @@ describe RequestInterceptor do
   let(:example) do
     RequestInterceptor.define do
       before { content_type 'text/plain' }
-      before { headers["x-counter"] = env["x-counter"].first.to_i + 1 if env["x-counter"] }
+      before { headers["x-counter"] = env["HTTP_X_COUNTER"].to_i + 1 if env["HTTP_X_COUNTER"] }
 
       get("/") do
         "example.com"
@@ -39,7 +39,7 @@ describe RequestInterceptor do
 
     RequestInterceptor.define(custom_super_class) do
       def self.call(env)
-        [200, {}, domain]
+        [200, {}, [domain]]
       end
     end
   end
@@ -158,7 +158,6 @@ describe RequestInterceptor do
       response = http.request(get_request)
       expect(response).to be_kind_of(Net::HTTPOK)
       expect(response['x-counter'].to_i).to eq(43)
-      expect(response.uri).to eq(uri)
     end
 
     it 'intercepts GET requests when using Net::HTTP#get' do
@@ -176,7 +175,6 @@ describe RequestInterceptor do
       expect(response).to be_kind_of(Net::HTTPCreated)
       expect(response.body).to eq(post_request.body)
       expect(response['x-counter'].to_i).to eq(43)
-      expect(response.uri).to eq(uri)
     end
 
     it 'intercepts POST request when using Net::HTTP#post' do
@@ -197,7 +195,6 @@ describe RequestInterceptor do
       expect(response).to be_kind_of(Net::HTTPOK)
       expect(response.body).to eq(put_request.body)
       expect(response['x-counter'].to_i).to eq(43)
-      expect(response.uri).to eq(uri)
     end
 
     it 'intercepts PUT requests when using Net::HTTP#put' do
@@ -215,7 +212,6 @@ describe RequestInterceptor do
       response = http.request(delete_request)
       expect(response).to be_kind_of(Net::HTTPAccepted)
       expect(response['x-counter'].to_i).to eq(43)
-      expect(response.uri).to eq(uri)
     end
 
     it 'intercepts DELETE requests when using Net::HTTP#delete' do

@@ -1,22 +1,24 @@
 require "request_interceptor/version"
 
-require "net/http"
-require "rack/mock"
+require "webmock"
+require "uri"
 
 class RequestInterceptor
   Transaction = Struct.new(:request, :response)
 
-  Restart = Struct.new(:required, :instructions) do
-    protected :required
-    def required?
-      !!required
-    end
+  WebMockSettings = Struct.new(:request_stubs, :callbacks, :net_connect_allowed, :show_body_diff, :show_stubbing_instructions) do
+    alias net_connect_allowed? net_connect_allowed
   end
 
-  GET = "GET".freeze
-  POST = "POST".freeze
-  PUT = "PUT".freeze
-  DELETE = "DELETE".freeze
+  class Request < SimpleDelegator
+    def path
+      __getobj__.uri.path
+    end
+
+    def uri
+      URI.parse(__getobj__.uri.to_s)
+    end
+  end
 
   def self.template=(template)
     @template =
@@ -44,91 +46,29 @@ class RequestInterceptor
   attr_reader :transactions
 
   def initialize(applications)
-    @applications = {}
+    @applications = applications
     @transactions = []
-
-    applications.each { |pattern, application| self[pattern] = application }
+    @webmock_settings = WebMockSettings.new([], [])
   end
 
   def [](pattern)
     @applications[pattern]
   end
 
-  def []=(pattern, application)
-    @applications[pattern] = application
-  end
-
   def run(&simulation)
     clear_transaction_log
-    cache_original_net_http_methods
-    override_net_http_methods
+    setup_webmock
+
     simulation.call
+
     transactions
   ensure
-    restore_net_http_methods
-  end
-
-  def request(http_context, request, body, &block)
-    # use Net::HTTP set_body_internal to
-    # keep the same behaviour as Net::HTTP
-    request.set_body_internal(body)
-    response = nil
-
-    if mock_request = mock_request_for_application(http_context, request)
-      mock_response = dispatch_mock_request(request, mock_request)
-
-      # create response
-      status = RequestInterceptor::Status.from_code(mock_response.status)
-      response = status.response_class.new("1.1", status.value, status.description)
-
-      # copy header to response
-      mock_response.original_headers.each do |k, v|
-        response.add_field(k, v)
-      end
-
-      # copy uri
-      response.uri = request.uri
-
-      # copy body to response
-      response.body = mock_response.body
-
-      # replace Net::HTTP::Response#read_body
-      def response.read_body(_, &block)
-        block.call(@body) unless block.nil?
-        @body
-      end
-
-      # yield the response because Net::HTTP#request does
-      block.call(response) unless block.nil?
-
-      # log intercepted transaction
-      log_transaction(request, response)
-    else
-      response = real_request(http_context, request, body, &block)
-    end
-
-    response
-  end
-
-  def start(http_context, &block)
-    self.restart = Restart.new(true, block)
-    http_context.instance_variable_set(:@started, true)
-    return block.call(http_context) if block
-    http_context
-  end
-
-  def finish(http_context)
-    http_context.instance_variable_set(:@started, false)
-    nil
+    reset_webmock
   end
 
   protected
 
-  attr_writer :restart
-
-  def restart
-    @restart || Restart.new(false)
-  end
+  attr_reader :webmock_settings
 
   private
 
@@ -136,67 +76,36 @@ class RequestInterceptor
     @transactions = []
   end
 
-  def cache_original_net_http_methods
-    @original_request_method = Net::HTTP.instance_method(:request)
-    @original_start_method = Net::HTTP.instance_method(:start)
-    @original_finish_method = Net::HTTP.instance_method(:finish)
-  end
+  def setup_webmock
+    webmock_settings.request_stubs = WebMock::StubRegistry.instance.request_stubs.dup || []
+    webmock_settings.callbacks = WebMock::CallbackRegistry.callbacks.dup || []
+    webmock_settings.net_connect_allowed = WebMock.net_connect_allowed?
+    webmock_settings.show_body_diff = WebMock::Config.instance.show_body_diff
+    webmock_settings.show_stubbing_instructions = WebMock::Config.instance.show_stubbing_instructions
 
-  def override_net_http_methods
-    runner = self
-
-    Net::HTTP.class_eval do
-      define_method(:start) { |&block| runner.start(self, &block) }
-      define_method(:finish) { runner.finish(self) }
-      define_method(:request) { |request, body = nil, &block| runner.request(self, request, body, &block) }
-    end
-  end
-
-  def real_request(http_context, request, body, &block)
-    http_context.finish if restart.required?
-
-    restore_net_http_methods(http_context)
-
-    if restart.required?
-      http_context.start(&restart.instructions)
-      self.restart = nil
+    WebMock.after_request do |request, response|
+      log_transaction(Request.new(request), response) if applications.any? { |pattern, _| request.uri.host.match(pattern) }
     end
 
-    http_context.request(request, body, &block)
-  end
-
-  def restore_net_http_methods(instance = nil)
-    if instance.nil?
-      Net::HTTP.send(:define_method, :request, @original_request_method)
-      Net::HTTP.send(:define_method, :start, @original_start_method)
-      Net::HTTP.send(:define_method, :finish, @original_finish_method)
-    else
-      instance.define_singleton_method(:request, @original_request_method)
-      instance.define_singleton_method(:start, @original_start_method)
-      instance.define_singleton_method(:finish, @original_finish_method)
+    applications.each do |pattern, application|
+      WebMock.stub_request(:any, pattern).to_rack(application)
     end
+
+    WebMock.allow_net_connect!
+    WebMock.hide_body_diff!
+    WebMock.hide_stubbing_instructions!
+    WebMock.enable!
   end
 
-  def mock_request_for_application(http_context, request)
-    _, application = applications.find { |pattern, _| pattern === http_context.address }
-    Rack::MockRequest.new(application) if application
-  end
-
-  def dispatch_mock_request(request, mock_request)
-    rack_env = request.to_hash
-
-    case request.method
-    when GET
-      mock_request.get(request.path, rack_env)
-    when POST
-      mock_request.post(request.path, rack_env.merge(input: request.body))
-    when PUT
-      mock_request.put(request.path, rack_env.merge(input: request.body))
-    when DELETE
-      mock_request.delete(request.path, rack_env)
-    else
-      raise NotImplementedError, "Simulating #{request.method} is not supported"
+  def reset_webmock
+    WebMock.disable_net_connect! unless webmock_settings.net_connect_allowed?
+    WebMock::Config.instance.show_body_diff = webmock_settings.show_body_diff
+    WebMock::Config.instance.show_stubbing_instructions = webmock_settings.show_stubbing_instructions
+    WebMock::CallbackRegistry.reset
+    webmock_settings.callbacks.each do |callback_settings|
+      WebMock.after_request(callback_settings[:options], &callback_settings[:block])
     end
+    WebMock::StubRegistry.instance.request_stubs = webmock_settings.request_stubs
   end
 
   def log_transaction(request, response)
