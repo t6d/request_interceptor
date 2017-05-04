@@ -63,6 +63,18 @@ describe RequestInterceptor do
     expect(log.last.request.uri).to eq(URI("http://test.google.com"))
   end
 
+  it 'should normalize urls to remove redundant port information before matching them against the hostname' do
+    interceptor = RequestInterceptor.new("example.com" => example)
+    log = interceptor.run do
+      uri = URI("http://example.com/some/path")
+      uri.port = 80
+
+      Net::HTTP.get(uri)
+    end
+
+    expect(log.count).to eq(1)
+  end
+
   it 'should allow to customize existing request interceptors' do
     modified_example = example.customize do
       get("/") do

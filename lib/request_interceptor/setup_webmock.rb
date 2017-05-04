@@ -38,8 +38,8 @@ class RequestInterceptor::SetupWebmock
 
     WebMock.after_request(&callback) unless callback.nil?
 
-    applications.each do |pattern, application|
-      WebMock.stub_request(:any, pattern).to_rack(application)
+    applications.each do |application|
+      WebMock.stub_request(:any, application.pattern).to_rack(application)
     end
 
     WebMock.allow_net_connect!

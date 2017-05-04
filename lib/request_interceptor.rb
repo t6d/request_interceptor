@@ -6,13 +6,37 @@ require "uri"
 class RequestInterceptor
   Transaction = Struct.new(:request, :response)
 
-  class RequestWrapper < SimpleDelegator
+  module RequestBackwardsCompatibility
     def path
-      __getobj__.uri.path
+      uri.request_uri
     end
 
     def uri
-      URI.parse(__getobj__.uri.to_s)
+      URI.parse(super.to_s)
+    end
+
+    def method
+      super.to_s.upcase
+    end
+  end
+
+  class ApplicationWrapper < SimpleDelegator
+    attr_reader :pattern
+
+    def initialize(pattern, application)
+      @pattern =
+        case pattern
+        when String
+          %r{://#{Regexp.escape(pattern)}/}
+        else
+          pattern
+        end
+
+      super(application)
+    end
+
+    def intercepts?(uri)
+      !!pattern.match(uri.normalize.to_s)
     end
   end
 
@@ -34,28 +58,25 @@ class RequestInterceptor
     Class.new(super_class || template, &application_definition)
   end
 
-  def self.run(*args, &simulation)
-    new(*args).run(&simulation)
+  def self.run(applications, &simulation)
+    new(applications).run(&simulation)
   end
 
   attr_reader :applications
   attr_reader :transactions
 
   def initialize(applications)
-    @applications = applications
+    @applications = applications.map { |pattern, application| ApplicationWrapper.new(pattern, application) }
     @transactions = []
-  end
-
-  def [](pattern)
-    @applications[pattern]
   end
 
   def run(&simulation)
     transactions = []
 
     request_logging = ->(request, response) do
-      next unless applications.any? { |pattern, _| request.uri.host.match(pattern) }
-      transactions << Transaction.new(RequestWrapper.new(request), response)
+      next unless applications.any? { |application| application.intercepts?(request.uri) }
+      request.extend(RequestBackwardsCompatibility)
+      transactions << Transaction.new(request, response)
     end
 
     SetupWebmock.perform(applications, request_logging, &simulation)
