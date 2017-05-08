@@ -79,14 +79,14 @@ class RequestInterceptor
       transactions << Transaction.new(request, response)
     end
 
-    SetupWebmock.perform(applications, request_logging, &simulation)
+    WebMockManager.new(applications, request_logging).run_simulation(&simulation)
 
     transactions
   end
 end
 
 require_relative "request_interceptor/application"
-require_relative "request_interceptor/setup_webmock"
+require_relative "request_interceptor/webmock_manager"
 require_relative "request_interceptor/webmock_patches"
 
 WebMock.singleton_class.prepend(RequestInterceptor::WebMockPatches)
