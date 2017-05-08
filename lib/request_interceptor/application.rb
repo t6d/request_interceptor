@@ -1,18 +1,22 @@
 require "sinatra/base"
 
 class RequestInterceptor::Application < Sinatra::Base
-  def self.customize(&customizations)
-    RequestInterceptor.define(self, &customizations)
-  end
-
-  def self.intercept(host, *args, &test)
-    RequestInterceptor.run(host => self.new(*args), &test)
-  end
-
-  def self.host(host)
-    define_singleton_method(:intercept) do |*args, &test|
-      super(host, *args, &test)
+  class << self
+    def customize(&customizations)
+      RequestInterceptor.define(self, &customizations)
     end
+
+    def intercept(pattern, *args, &test)
+      RequestInterceptor.run(pattern => self.new(*args), &test)
+    end
+
+    def match(pattern)
+      define_singleton_method(:intercept) do |*args, &test|
+        super(pattern, *args, &test)
+      end
+    end
+
+    alias host match
   end
 
   configure do
