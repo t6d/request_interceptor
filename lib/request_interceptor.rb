@@ -87,3 +87,6 @@ end
 
 require_relative "request_interceptor/application"
 require_relative "request_interceptor/setup_webmock"
+require_relative "request_interceptor/webmock_patches"
+
+WebMock.singleton_class.prepend(RequestInterceptor::WebMockPatches)

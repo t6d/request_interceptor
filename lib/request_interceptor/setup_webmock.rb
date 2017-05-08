@@ -1,5 +1,5 @@
 class RequestInterceptor::SetupWebmock
-  WebMockSettings = Struct.new(:request_stubs, :callbacks, :allow_net_connect, :allow_localhost, :show_body_diff, :show_stubbing_instructions)
+  WebMockSettings = Struct.new(:request_stubs, :callbacks, :allow_net_connect, :allow_localhost, :show_body_diff, :show_stubbing_instructions, :enabled_previously)
 
   def self.perform(applications, callback = nil, &simulation)
     new(applications, callback).perform(&simulation)
@@ -8,26 +8,26 @@ class RequestInterceptor::SetupWebmock
   def initialize(applications, callback = nil)
     @applications = applications
     @callback = callback
-    @webmock_settings = WebMockSettings.new([], [])
   end
 
   def perform
-    setup_webmock
+    settings = setup_webmock
 
     yield
   ensure
-    reset_webmock
+    reset_webmock(settings)
   end
 
   protected
 
-  attr_reader :webmock_settings
   attr_reader :callback
   attr_reader :applications
 
   private
 
   def setup_webmock
+    webmock_settings = WebMockSettings.new
+    webmock_settings.enabled_previously = WebMock.enabled?
     webmock_settings.request_stubs = WebMock::StubRegistry.instance.request_stubs.dup || []
     webmock_settings.callbacks = WebMock::CallbackRegistry.callbacks.dup || []
     webmock_settings.allow_net_connect = WebMock::Config.instance.allow_net_connect
@@ -45,9 +45,11 @@ class RequestInterceptor::SetupWebmock
     WebMock.hide_body_diff!
     WebMock.hide_stubbing_instructions!
     WebMock.enable!
+
+    webmock_settings
   end
 
-  def reset_webmock
+  def reset_webmock(webmock_settings)
     WebMock::Config.instance.allow_net_connect = webmock_settings.allow_net_connect
     WebMock::Config.instance.allow_localhost = webmock_settings.allow_localhost
     WebMock::Config.instance.show_body_diff = webmock_settings.show_body_diff
@@ -57,5 +59,6 @@ class RequestInterceptor::SetupWebmock
       WebMock.after_request(callback_settings[:options], &callback_settings[:block])
     end
     WebMock::StubRegistry.instance.request_stubs = webmock_settings.request_stubs
+    WebMock.disable! unless webmock_settings.enabled_previously
   end
 end
