@@ -233,9 +233,9 @@ describe RequestInterceptor do
     end
 
     it 'runs non-intercepted requests like normal' do
-      request = Net::HTTP::Get.new( URI.parse("http://stackoverflow.com/") )
-      response = Net::HTTP.new("stackoverflow.com").request(request)
-      expect(response.body).to match(/Stack Overflow/im)
+      request = Net::HTTP::Get.new(URI.parse("https://example.com/") )
+      response = Net::HTTP.new("example.com").request(request)
+      expect(response.body).to match(/Example Domain/im)
     end
   end
 
