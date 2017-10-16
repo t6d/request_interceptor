@@ -50,17 +50,21 @@ describe RequestInterceptor do
 
   it 'should keep a log of all requests and responses' do
     log = interceptor.run do
-      Net::HTTP.get(URI("http://test.example.com"))
-      Net::HTTP.get(URI("http://test.google.com"))
+      Net::HTTP.get(URI("http://test.example.com/?id=1"))
+      Net::HTTP.get(URI("http://test.google.com/?id=2"))
     end
 
     expect(log.count).to eq(2)
 
     expect(log.first.request.path).to eq("/")
-    expect(log.first.request.uri).to eq(URI("http://test.example.com"))
+    expect(log.first.request.uri).to eq(URI("http://test.example.com/?id=1"))
 
     expect(log.last.request.path).to eq("/")
-    expect(log.last.request.uri).to eq(URI("http://test.google.com"))
+    expect(log.last.request.uri).to eq(URI("http://test.google.com/?id=2"))
+
+    expect(log).to have_intercepted_request(:get, "/").count(2)
+    expect(log).to have_intercepted_request(:get, "/").count(1).with_query(id: "1")
+    expect(log).to have_intercepted_request(:get, "/").count(1).with_query(including(id: "2"))
   end
 
   it 'should normalize urls to remove redundant port information before matching them against the hostname' do
@@ -233,9 +237,9 @@ describe RequestInterceptor do
     end
 
     it 'runs non-intercepted requests like normal' do
-      request = Net::HTTP::Get.new( URI.parse("http://stackoverflow.com/") )
-      response = Net::HTTP.new("stackoverflow.com").request(request)
-      expect(response.body).to match(/Stack Overflow/im)
+      request = Net::HTTP::Get.new(URI.parse("https://example.com/") )
+      response = Net::HTTP.new("example.com").request(request)
+      expect(response.body).to match(/Example Domain/im)
     end
   end
 
