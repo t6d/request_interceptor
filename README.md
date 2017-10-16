@@ -121,6 +121,78 @@ multilingual_app.intercept do
 end
 ```
 
+### RSpec Integration
+
+Request Interceptor has built in support for RSpec.
+The matcher that ships with the gem supports matching
+
+* the request method,
+* the path
+* the query parameters and
+* the request body.
+
+Unless otherwise specified, the matcher uses RSpec's own equality matcher for all comparisons:
+
+```ruby
+hello_world_app = RequestInterceptor.define do
+  host "example.com"
+  
+  get "/" do
+    # ...
+  end
+  
+  post "/articles" do
+    # ...
+  end
+end
+
+log = hello_world_app.intercept do
+  Net::HTTP.get(URI("http://example.com/"))
+end
+
+expect(log).to contain_intercepted_request(:get, "/")
+```
+
+The example above only succeeds if the path is exactly `"/"`.
+While this is generally desired for matching the path or the request method, it can be too restrictive when matching against the query or the request body.
+The example below demonstrates how to use `with_body` in conjunction with RSpec's own `including` matcher to match against a subset of the request body.
+
+```ruby
+log = hello_world_app.intercept do
+  uri = URI("http://example.com/")
+  client = Net::HTTP.new(uri.host, uri.port)
+  request = Net::HTTP::Post.new(uri.path, "Content-Type" => "application/json")
+  request.body = "{title: \"Hello World!\", content: \"Some irrelevant content.\"}"
+  client.request(request)
+end
+
+expect(log).to contain_intercepted_request(:post, "/articles").with_body(including(title: "Hello World!"))
+```
+
+As the example above indicates, Request Interceptor automatically parses JSON request bodies to make matching easier.
+
+Similar to `with_body`, the RSpec matcher also provides a `with_query` method, to match against query parameters:
+
+```ruby
+log = hello_world_app.intercept do
+  Net::HTTP.get(URI("http://example.com/?q=hello+world"))
+end
+
+expect(log).to contain_intercepted_request(:get, "/").with_query(q: "hello+world")
+```
+
+Lastly, `count` can be used to specify the number of times a particular request is to be expected.
+It takes an integer or a range as its argument.
+
+```ruby
+log = hello_world_app.intercept do
+  Net::HTTP.get(URI("http://example.com/"))
+  Net::HTTP.get(URI("http://example.com/"))
+end
+
+expect(log).to contain_intercepted_request(:get, "/").count(2)
+```
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at (t6d/request_interceptor)[https://github.com/t6d/request_interceptor].
