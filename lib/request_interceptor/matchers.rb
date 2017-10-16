@@ -61,7 +61,7 @@ module RequestInterceptor::Matchers
         if body.respond_to?(:matches?) && body.respond_to?(:failure_message)
           body
         else
-          eq(body)
+          RSpec::Matchers::BuiltIn::Eq.new(body)
         end
 
       @body = MatcherWrapper.new(body_matcher)
