@@ -1,6 +1,6 @@
 # Request Interceptor
 
-Request interceptor is a library for simulating foreign APIs using Sinatra applcations.
+Request interceptor is a library for simulating foreign APIs using Sinatra applications.
 
 ## Installation
 
@@ -195,7 +195,7 @@ expect(log).to contain_intercepted_request(:get, "/").count(2)
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at (t6d/request_interceptor)[https://github.com/t6d/request_interceptor].
+Bug reports and pull requests are welcome on GitHub at [t6d/request_interceptor](https://github.com/t6d/request_interceptor).
 
 ## License
 
