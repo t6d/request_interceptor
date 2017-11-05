@@ -1,6 +1,6 @@
 # Request Interceptor
 
-Request interceptor is a library for simulating foreign APIs using Sinatra applcations.
+Request interceptor is a library for simulating foreign APIs using Sinatra applications.
 
 ## Installation
 
